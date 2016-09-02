@@ -8,6 +8,9 @@
 
 #define UART_BAUD 115200 // シリアルのボーレート
 
+#define DO3   4  // デジタル出力 3
+#define DO4   9  // デジタル出力 4
+
 
 static tsFILE sSerStream;          // シリアル用ストリーム
 static tsSerialPortSetup sSerPort; // シリアルポートデスクリプタ
@@ -66,6 +69,13 @@ static void vInitHardware()
     vSerialInit();                      //  シリアル通信の設定
     ToCoNet_vDebugInit(&sSerStream);
     ToCoNet_vDebugLevel(0);
+
+	/////////////////////////////////
+    // 使用ポートの設定
+    vPortAsOutput(DO3);		//	DO3:4
+    vPortSetHi(DO3);
+    /////////////////////////////////
+
 }
 
 static int sum = 0;
@@ -73,11 +83,18 @@ static int sum = 0;
 // ユーザ定義のイベントハンドラ
 static void vProcessEvCore(tsEvent *pEv, teEvent eEvent, uint32 u32evarg)
 {
+	static bool_t b= TRUE;
+
 
     // 1 秒周期のシステムタイマ通知
    if(eEvent == E_EVENT_TICK_SECOND)
    {
         dbg("%d\t%d",u32TickCount_ms,sum);      //  Tickタイマが数えてる（らしい）msと，TIMER0によるmsを出力
+
+    	bPortRead(DO3) ? vPortSetHi(DO3) : vPortSetLo(DO3);
+        //b = !b;
+        //if(b)	vPortSetHi(DO4);
+        //else	vPortSetLo(DO4);
    }
 
     return;
@@ -131,6 +148,7 @@ void cbAppColdStart(bool_t bAfterAhiInit)
     sToCoNet_AppContext.u8CPUClk = 3;       //  CPUクロックは最高の32MHz
     sToCoNet_AppContext.u16TickHz = 250;    //  TickTimerはデフォルトの250Hz
     ToCoNet_vRfConfig();                    //  設定適用．無くてもいい気がする（未検証）
+
     if (!bAfterAhiInit) {
     } else {
         // ユーザ定義のイベントハンドラを登録
