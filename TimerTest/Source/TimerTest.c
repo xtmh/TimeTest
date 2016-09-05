@@ -3,6 +3,7 @@
 #include "serial.h"
 #include "sprintf.h"
 #include "ToCoNet.h"
+#include <PeripheralRegs.h>
 #include <string.h>
 
 
@@ -25,6 +26,8 @@ static tsTimerContext timer0;
 #else
 #define dbg(...)
 #endif
+
+uint16	u16adc;
 
 // デバッグ出力用に UART を初期化
 static void vSerialInit() {
@@ -62,6 +65,53 @@ static void vInitTimer()
 
 }
 
+/**
+ * ADCの初期化
+ */
+static void vInitADC() {
+	/*
+	// ADC
+	vADC_Init(&sAppData.sObjADC, &sAppData.sADC, TRUE);
+	sAppData.u8AdcState = 0xFF; // 初期化中
+
+#ifdef USE_TEMP_INSTDOF_ADC2
+	sAppData.sObjADC.u8SourceMask =
+			TEH_ADC_SRC_VOLT | TEH_ADC_SRC_ADC_1 | TEH_ADC_SRC_TEMP;
+#else
+	sAppData.sObjADC.u8SourceMask =
+			TEH_ADC_SRC_VOLT | TEH_ADC_SRC_ADC_1 | TEH_ADC_SRC_ADC_2;
+#endif
+	*/
+
+	//	①ｱﾅﾛｸﾞ部の電源投入
+	if(!bAHI_APRegulatorEnabled()){
+		vAHI_ApConfigure(E_AHI_AP_REGULATOR_ENABLE,
+						E_AHI_AP_INT_ENABLE,
+						E_AHI_AP_SAMPLE_2,
+						E_AHI_AP_CLOCKDIV_500KHZ,
+						E_AHI_AP_INTREF);
+		while(!bAHI_APRegulatorEnabled());
+	}
+
+	//	②ADC開始
+	vAHI_AdcEnable(
+			E_AHI_ADC_CONTINUOUS,
+            //	E_AHI_ADC_SINGLE_SHOT //１回のみ
+			//	E_AHI_ADC_CONTINUOUS,// 連続実行
+		E_AHI_AP_INPUT_RANGE_2,
+           // E_AHI_AP_INPUT_RANGE_1 (0-1.2V)
+           // または E_AHI_AP_INPUT_RANGE_2 (0-2.4V)
+		E_AHI_ADC_SRC_ADC_2
+           // E_AHI_ADC_SRC_ADC_1 (ADC1)
+           // E_AHI_ADC_SRC_ADC_2 (ADC2)
+           // E_AHI_ADC_SRC_ADC_3 (ADC3)
+           // E_AHI_ADC_SRC_ADC_4 (ADC4)
+           // E_AHI_ADC_SRC_TEMP (温度)
+           // E_AHI_ADC_SRC_VOLT (電圧)
+    );
+
+	vAHI_AdcStartSample(); // ADC開始
+}
 
 // ハードウェア初期化
 static void vInitHardware()
@@ -89,17 +139,33 @@ static void vProcessEvCore(tsEvent *pEv, teEvent eEvent, uint32 u32evarg)
     // 1 秒周期のシステムタイマ通知
    if(eEvent == E_EVENT_TICK_SECOND)
    {
-        dbg("%d\t%d",u32TickCount_ms,sum);      //  Tickタイマが数えてる（らしい）msと，TIMER0によるmsを出力
+        //dbg("%d\t%d",u32TickCount_ms,sum);      //  Tickタイマが数えてる（らしい）msと，TIMER0によるmsを出力
+
+	   uint16 u16AdcValue = u16AHI_AdcRead();
+	   dbg("%d\t%d\t%d",u32TickCount_ms,sum,u16AdcValue);
 
     	bPortRead(DO3) ? vPortSetHi(DO3) : vPortSetLo(DO3);
-        //b = !b;
-        //if(b)	vPortSetHi(DO4);
-        //else	vPortSetLo(DO4);
    }
 
     return;
 }
 
+//	ADC 完了待ちおよび読み出し
+//   (ポーリングのAPIに不具合が有るので割り込みを待ちます)
+//   以下は AppQueueAPI を使用したコードの一部。
+PRIVATE void vProcessIncomingHwEvent(AppQApiHwInd_s *psAHI_Ind)
+{
+	uint32 u32DeviceId = psAHI_Ind->u32DeviceId;
+	//uint32 u32ItemBitmap = psAHI_Ind->u32ItemBitmap;
+
+	switch (u32DeviceId) {
+	case E_AHI_DEVICE_ANALOGUE:
+        // ADCが終了
+        u16adc = u16AHI_AdcRead(); // 値の読み出し
+ 	    dbg("ad=%d",u16adc);
+        break;
+    }
+}
 
 void cbToCoNet_vMain(void)
 {
@@ -153,7 +219,10 @@ void cbAppColdStart(bool_t bAfterAhiInit)
     } else {
         // ユーザ定義のイベントハンドラを登録
         ToCoNet_Event_Register_State_Machine(vProcessEvCore);
+        ToCoNet_Event_Register_State_Machine(vProcessIncomingHwEvent);
         vInitHardware();
+        vInitADC();
+        vAHI_AdcStartSample();	//	ADC開始
         vInitTimer();
     }
 }
@@ -163,3 +232,6 @@ void cbAppWarmStart(bool_t bAfterAhiInit)
 {
     return;
 }
+
+
+

@@ -47,6 +47,10 @@ objs_JN5164/TimerTest.o:  \
   /cygdrive/c/TWESDK/Wks_ToCoNet/TimerTest/../../Wks_libToCoNet/libToCoNet/include/ToCoNet/ToCoNet.h \
   /cygdrive/c/TWESDK/Wks_ToCoNet/TimerTest/../../Wks_libToCoNet/libToCoNet/include/ToCoNet/ToCoNet_mod_Nwk_LayerTree.h \
   /cygdrive/c/TWESDK/Wks_ToCoNet/TimerTest/../../Wks_libToCoNet/libToCoNet/include/ToCoNet/ToCoNet_mod_DuplicateChecker.h \
+  /cygdrive/c/TWESDK/516x/Components/HardwareApi/Include/PeripheralRegs.h \
+  /cygdrive/c/TWESDK/516x/Components/HardwareApi/Include/PeripheralRegs_JN5164.h \
+  /cygdrive/c/TWESDK/516x/Components/HardwareApi/Include/PeripheralRegs_JN516x.h \
+  /cygdrive/c/TWESDK/516x/Components/HardwareApi/Include/AppHardwareApi.h \
   /cygdrive/c/TWESDK/Tools/ba-elf-ba2/bin/../lib/gcc/ba-elf/4.1.2/../../../../ba-elf/include/string.h \
   /cygdrive/c/TWESDK/Tools/ba-elf-ba2/bin/../lib/gcc/ba-elf/4.1.2/../../../../ba-elf/include/sys/string.h
 
@@ -143,6 +147,14 @@ objs_JN5164/TimerTest.o:  \
 /cygdrive/c/TWESDK/Wks_ToCoNet/TimerTest/../../Wks_libToCoNet/libToCoNet/include/ToCoNet/ToCoNet_mod_Nwk_LayerTree.h:
 
 /cygdrive/c/TWESDK/Wks_ToCoNet/TimerTest/../../Wks_libToCoNet/libToCoNet/include/ToCoNet/ToCoNet_mod_DuplicateChecker.h:
+
+/cygdrive/c/TWESDK/516x/Components/HardwareApi/Include/PeripheralRegs.h:
+
+/cygdrive/c/TWESDK/516x/Components/HardwareApi/Include/PeripheralRegs_JN5164.h:
+
+/cygdrive/c/TWESDK/516x/Components/HardwareApi/Include/PeripheralRegs_JN516x.h:
+
+/cygdrive/c/TWESDK/516x/Components/HardwareApi/Include/AppHardwareApi.h:
 
 /cygdrive/c/TWESDK/Tools/ba-elf-ba2/bin/../lib/gcc/ba-elf/4.1.2/../../../../ba-elf/include/string.h:
 
