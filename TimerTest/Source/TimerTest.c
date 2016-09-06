@@ -63,7 +63,7 @@ static void vInitTimer()
 	vAHI_TimerSetLocation(E_AHI_TIMER_1, TRUE, TRUE); // IOの割り当てを設定
 	// PWM用
 	timer1.u8Device = E_AHI_DEVICE_TIMER1;	//	timer1使用
-	timer1.u16Hz = 1000;		//	1000Hz
+	timer1.u16Hz = 20000;		//	1000Hz
 	timer1.u8PreScale = 1;		//	プリスケーラー
 	//timer1.u16duty = 1024; 	//	1024=Hi, 0:Lo
 	timer1.u16duty = 512; 		//	512=Hi, 512:Lo
