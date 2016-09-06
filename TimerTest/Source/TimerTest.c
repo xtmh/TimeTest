@@ -110,7 +110,7 @@ static void vInitADC() {
            // E_AHI_ADC_SRC_VOLT (電圧)
     );
 
-	vAHI_AdcStartSample(); // ADC開始
+	//vAHI_AdcStartSample(); // ADC開始
 }
 
 // ハードウェア初期化
@@ -139,13 +139,16 @@ static void vProcessEvCore(tsEvent *pEv, teEvent eEvent, uint32 u32evarg)
     // 1 秒周期のシステムタイマ通知
    if(eEvent == E_EVENT_TICK_SECOND)
    {
-        //dbg("%d\t%d",u32TickCount_ms,sum);      //  Tickタイマが数えてる（らしい）msと，TIMER0によるmsを出力
+       //dbg("%d\t%d",u32TickCount_ms,sum);      //  Tickタイマが数えてる（らしい）msと，TIMER0によるmsを出力
 
 	   uint16 u16AdcValue = u16AHI_AdcRead();
 	   dbg("%d\t%d\t%d",u32TickCount_ms,sum,u16AdcValue);
 
-    	bPortRead(DO3) ? vPortSetHi(DO3) : vPortSetLo(DO3);
+	   bPortRead(DO3) ? vPortSetHi(DO3) : vPortSetLo(DO3);
    }
+   if(eEvent == E_EVENT_TICK_TIMER){
+	   //	125Hz
+	}
 
     return;
 }
@@ -211,7 +214,7 @@ uint8 cbToCoNet_u8HwInt(uint32 u32DeviceId, uint32 u32ItemBitmap)
 void cbAppColdStart(bool_t bAfterAhiInit)
 {
 
-    sToCoNet_AppContext.u8CPUClk = 3;       //  CPUクロックは最高の32MHz
+    sToCoNet_AppContext.u8CPUClk = 3;       //  CPUクロックは最高の32MHz(0:4MHz,1:8MHz,2:16MHz,3:32MHz)
     sToCoNet_AppContext.u16TickHz = 250;    //  TickTimerはデフォルトの250Hz
     ToCoNet_vRfConfig();                    //  設定適用．無くてもいい気がする（未検証）
 
