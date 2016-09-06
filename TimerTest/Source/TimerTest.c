@@ -56,7 +56,16 @@ static void vSerialInit() {
 
 static void vInitTimer()
 {
-	// PWM の初期化
+	//	Timer用
+	memset(&timer0, 0, sizeof(tsTimerContext));
+    timer0.u8Device = E_AHI_DEVICE_TIMER0; // timer0使用
+    timer0.u16Hz = 1000;        // 1000Hz
+    timer0.u8PreScale = 1;      // プリスケーラ1/2
+    timer0.bDisableInt = FALSE; // 割り込み禁止
+    vTimerConfig(&timer0); // タイマ設定書き込み
+    vTimerStart(&timer0);  // タイマスタート
+
+    // PWM の初期化
 	memset(&timer1, 0, sizeof(tsTimerContext));
 	vAHI_TimerFineGrainDIOControl(0x7);	// bit 0,1,2 をセット (TIMER0 の各ピンを解放する, PWM1..4 は使用する)
 	//vAHI_TimerFineGrainDIOControl(0x0); 	// bit 0,1 をセット (TIMER0 の各ピンを解放する, PWM1..4 は使用する)
@@ -73,15 +82,6 @@ static void vInitTimer()
 	vTimerConfig(&timer1);
 	vTimerStart(&timer1);
 	t1 = 0;
-
-	//	Timer用
-	memset(&timer0, 0, sizeof(tsTimerContext));
-    timer0.u8Device = E_AHI_DEVICE_TIMER0; // timer0使用
-    timer0.u16Hz = 1000;        // 1000Hz
-    timer0.u8PreScale = 1;      // プリスケーラ1/2
-    timer0.bDisableInt = FALSE; // 割り込み禁止
-    vTimerConfig(&timer0); // タイマ設定書き込み
-    vTimerStart(&timer0);  // タイマスタート
 }
 
 /**
