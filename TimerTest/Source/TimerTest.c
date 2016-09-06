@@ -17,6 +17,7 @@ static tsFILE sSerStream;          // シリアル用ストリーム
 static tsSerialPortSetup sSerPort; // シリアルポートデスクリプタ
 
 static tsTimerContext timer0;
+static tsTimerContext timer1;
 
 
 // デバッグメッセージ出力用
@@ -28,6 +29,9 @@ static tsTimerContext timer0;
 #endif
 
 uint16	u16adc;
+static int sum = 0;
+static int t1=0;
+
 
 // デバッグ出力用に UART を初期化
 static void vSerialInit() {
@@ -52,17 +56,32 @@ static void vSerialInit() {
 
 static void vInitTimer()
 {
-    memset(&timer0, 0, sizeof(tsTimerContext));
-    timer0.u8Device = E_AHI_DEVICE_TIMER0; // timer0使用
+	// PWM の初期化
+	memset(&timer1, 0, sizeof(tsTimerContext));
+	vAHI_TimerFineGrainDIOControl(0x7);	// bit 0,1,2 をセット (TIMER0 の各ピンを解放する, PWM1..4 は使用する)
+	//vAHI_TimerFineGrainDIOControl(0x0); 	// bit 0,1 をセット (TIMER0 の各ピンを解放する, PWM1..4 は使用する)
+	vAHI_TimerSetLocation(E_AHI_TIMER_1, TRUE, TRUE); // IOの割り当てを設定
+	// PWM用
+	timer1.u8Device = E_AHI_DEVICE_TIMER1;	//	timer1使用
+	timer1.u16Hz = 1000;		//	1000Hz
+	timer1.u8PreScale = 1;		//	プリスケーラー
+	//timer1.u16duty = 1024; 	//	1024=Hi, 0:Lo
+	timer1.u16duty = 512; 		//	512=Hi, 512:Lo
+	timer1.bPWMout = TRUE;		//	PWM出力
+	//timer1.bDisableInt = TRUE;//	割り込みを許可する指定
+	timer1.bDisableInt = FALSE;	//	割り込みを禁止する指定
+	vTimerConfig(&timer1);
+	vTimerStart(&timer1);
+	t1 = 0;
 
+	//	Timer用
+	memset(&timer0, 0, sizeof(tsTimerContext));
+    timer0.u8Device = E_AHI_DEVICE_TIMER0; // timer0使用
     timer0.u16Hz = 1000;        // 1000Hz
     timer0.u8PreScale = 1;      // プリスケーラ1/2
     timer0.bDisableInt = FALSE; // 割り込み禁止
-
-
     vTimerConfig(&timer0); // タイマ設定書き込み
     vTimerStart(&timer0);  // タイマスタート
-
 }
 
 /**
@@ -120,6 +139,7 @@ static void vInitHardware()
     ToCoNet_vDebugInit(&sSerStream);
     ToCoNet_vDebugLevel(0);
 
+
 	/////////////////////////////////
     // 使用ポートの設定
     vPortAsOutput(DO3);		//	DO3:4
@@ -128,21 +148,20 @@ static void vInitHardware()
 
 }
 
-static int sum = 0;
-
 // ユーザ定義のイベントハンドラ
 static void vProcessEvCore(tsEvent *pEv, teEvent eEvent, uint32 u32evarg)
 {
-	static bool_t b= TRUE;
-
-
     // 1 秒周期のシステムタイマ通知
    if(eEvent == E_EVENT_TICK_SECOND)
    {
        //dbg("%d\t%d",u32TickCount_ms,sum);      //  Tickタイマが数えてる（らしい）msと，TIMER0によるmsを出力
 
 	   uint16 u16AdcValue = u16AHI_AdcRead();
-	   dbg("%d\t%d\t%d",u32TickCount_ms,sum,u16AdcValue);
+	   dbg("%d\t%d\t%d\t%d",
+			   u32TickCount_ms,
+			   sum,
+			   t1,
+			   u16AdcValue);
 
 	   bPortRead(DO3) ? vPortSetHi(DO3) : vPortSetLo(DO3);
    }
@@ -196,11 +215,27 @@ void cbToCoNet_vNwkEvent(teEvent eEvent, uint32 u32arg)
 // ハードウェア割り込みの遅延実行部
 void cbToCoNet_vHwEvent(uint32 u32DeviceId, uint32 u32ItemBitmap)
 {
-    if(u32DeviceId == E_AHI_DEVICE_TIMER0)  //  TIMER0で割り込まれたら
-    {
+    switch (u32DeviceId) {
+    //	TickTimerによるｲﾍﾞﾝﾄ割り込み
+    case E_AHI_DEVICE_TICK_TIMER:
+        // LED BLINK
+        //1msごとにLオンオフ
+        //vPortSet_TrueAsLo(PORT_KIT_LED2, u32TickCount_ms & 0x001);
+         break;
+    case E_AHI_DEVICE_TIMER0:  //  TIMER0で割り込まれたら
+    	//dbg("timer0");
         sum++;
+        break;
+    case E_AHI_DEVICE_TIMER1:  //  TIMER0で割り込まれたら
+    	timer1.u16duty = t1; 		// 512=Hi, 512:Lo
+    	vTimerStart(&timer1);
+    	t1++;
+    	if(t1>1023)	t1 = 0;
+    	//dbg("timer1:%04d", t1);
+        break;
+    default:
+        break;
     }
-    return;
 }
 
 // ハードウェア割り込み発生時
@@ -216,6 +251,7 @@ void cbAppColdStart(bool_t bAfterAhiInit)
 
     sToCoNet_AppContext.u8CPUClk = 3;       //  CPUクロックは最高の32MHz(0:4MHz,1:8MHz,2:16MHz,3:32MHz)
     sToCoNet_AppContext.u16TickHz = 250;    //  TickTimerはデフォルトの250Hz
+    //sToCoNet_AppContext.u16TickHz = 1000; //	システムTICK割り込みを1kHz
     ToCoNet_vRfConfig();                    //  設定適用．無くてもいい気がする（未検証）
 
     if (!bAfterAhiInit) {
