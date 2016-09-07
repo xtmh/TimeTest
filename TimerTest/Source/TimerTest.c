@@ -32,6 +32,8 @@ uint16	u16adc;
 static int sum = 0;
 static int t1=0;
 
+uint16	adcBuffer;
+
 
 // デバッグ出力用に UART を初期化
 static void vSerialInit() {
@@ -56,6 +58,7 @@ static void vSerialInit() {
 
 static void vInitTimer()
 {
+	/*
 	//	Timer用
 	memset(&timer0, 0, sizeof(tsTimerContext));
     timer0.u8Device = E_AHI_DEVICE_TIMER0; // timer0使用
@@ -64,6 +67,7 @@ static void vInitTimer()
     timer0.bDisableInt = FALSE; // 割り込み禁止
     vTimerConfig(&timer0); // タイマ設定書き込み
     vTimerStart(&timer0);  // タイマスタート
+    */
 
     // PWM の初期化
 	memset(&timer1, 0, sizeof(tsTimerContext));
@@ -151,14 +155,14 @@ static void vProcessEvCore(tsEvent *pEv, teEvent eEvent, uint32 u32evarg)
    if(eEvent == E_EVENT_TICK_SECOND)
    {
        //dbg("%d\t%d",u32TickCount_ms,sum);      //  Tickタイマが数えてる（らしい）msと，TIMER0によるmsを出力
-
+	   /*
 	   uint16 u16AdcValue = u16AHI_AdcRead();
 	   dbg("T1=%d\tT2=%d\tT3=%d\tADC=%d",
 			   u32TickCount_ms,
 			   sum,
 			   t1,
 			   u16AdcValue);
-
+		*/
 	   bPortRead(DO3) ? vPortSetHi(DO3) : vPortSetLo(DO3);
    }
    if(eEvent == E_EVENT_TICK_TIMER){
@@ -173,6 +177,7 @@ static void vProcessEvCore(tsEvent *pEv, teEvent eEvent, uint32 u32evarg)
 //   以下は AppQueueAPI を使用したコードの一部。
 PRIVATE void vProcessIncomingHwEvent(AppQApiHwInd_s *psAHI_Ind)
 {
+	/*
 	uint32 u32DeviceId = psAHI_Ind->u32DeviceId;
 	//uint32 u32ItemBitmap = psAHI_Ind->u32ItemBitmap;
 
@@ -185,6 +190,7 @@ PRIVATE void vProcessIncomingHwEvent(AppQApiHwInd_s *psAHI_Ind)
  	   vAHI_AdcStartSample();
         break;
     }
+    */
 }
 
 void cbToCoNet_vMain(void)
@@ -224,7 +230,7 @@ void cbToCoNet_vHwEvent(uint32 u32DeviceId, uint32 u32ItemBitmap)
     	//dbg("timer0");
         sum++;
         break;
-    case E_AHI_DEVICE_TIMER1:  //  TIMER0で割り込まれたら
+    case E_AHI_DEVICE_TIMER1:  //  TIMER1で割り込まれたら
     	timer1.u16duty = t1; 		// 512=Hi, 512:Lo
     	vTimerStart(&timer1);
     	t1++;
@@ -243,6 +249,59 @@ uint8 cbToCoNet_u8HwInt(uint32 u32DeviceId, uint32 u32ItemBitmap)
     return FALSE;
 }
 
+//	timer0によるｺｰﾙﾊﾞｯｸ・・・ADで割り込み不要としており呼ばれない
+PRIVATE void timer0Callback(uint32 device, uint32 bitmap)
+{
+	dbg("timer0Callback");
+}
+
+//	AD変換ｺｰﾙﾊﾞｯｸ
+PRIVATE void adCallback(uint32 device, uint32 bitmap)
+{
+	static int n=0;
+	dbg("%06d:%04d", n++, adcBuffer);
+}
+
+void adDMAInit()
+{
+	//	ｱﾅﾛｸﾞ部の電源投入
+	if(!bAHI_APRegulatorEnabled()){
+		vAHI_ApConfigure(E_AHI_AP_REGULATOR_ENABLE,	//	ｱﾅﾛｸﾞ部通電
+						E_AHI_AP_INT_ENABLE,		//	ADC完了割り込み許可
+						E_AHI_AP_SAMPLE_2,			//	ｻﾝﾌﾟﾙ周期：2clock periods
+						E_AHI_AP_CLOCKDIV_500KHZ,	//	500kHz(recommended)
+						E_AHI_AP_INTREF);			//	ﾘﾌｧﾚﾝｽ電圧(internal)
+		while(!bAHI_APRegulatorEnabled());			//	電圧安定するまで待つ
+	}
+
+	//	timer0
+	vAHI_TimerFineGrainDIOControl(0xff);				//	timer0でIOﾎﾟｰﾄ使用しない
+	vAHI_TimerConfigureOutputs(E_AHI_TIMER_0, FALSE, FALSE);
+	vAHI_TimerEnable(E_AHI_TIMER_0, 14, FALSE, FALSE, FALSE);	//	AD変換でﾀｲﾏｰ割り込みは不要
+	vAHI_TimerClockSelect(E_AHI_TIMER_0, FALSE, TRUE);	//
+	vAHI_Timer0RegisterCallback(timer0Callback);
+	vAHI_TimerDIOControl(E_AHI_TIMER_0, FALSE);
+	vAHI_TimerStartRepeat(E_AHI_TIMER_0, 0, 500);		//	500msで繰り返し
+
+
+	//	callback登録
+	vAHI_APRegisterCallback(adCallback);
+
+	//	DMAを使ったADC
+	if(!bAHI_AdcEnableSampleBuffer(E_AHI_AP_INPUT_RANGE_2,
+									E_AHI_TIMER_0,
+									0x04,	//	AD3
+									adcBuffer,
+									1,
+									TRUE,
+									E_AHI_AP_INT_DMA_OVER_MASK|E_AHI_AP_INT_DMA_END_MASK)){
+		//dbg("adc start");
+	}
+
+
+}
+
+
 // コールドスタート時
 void cbAppColdStart(bool_t bAfterAhiInit)
 {
@@ -258,9 +317,10 @@ void cbAppColdStart(bool_t bAfterAhiInit)
         ToCoNet_Event_Register_State_Machine(vProcessEvCore);
         ToCoNet_Event_Register_State_Machine(vProcessIncomingHwEvent);
         vInitHardware();
-        vInitADC();
+        //vInitADC();
+        //vInitTimer();
+        adDMAInit();
         vAHI_AdcStartSample();	//	ADC開始
-        vInitTimer();
     }
 }
 
