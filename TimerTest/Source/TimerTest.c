@@ -104,32 +104,30 @@ static void vInitADC() {
 
 	//	①ｱﾅﾛｸﾞ部の電源投入
 	if(!bAHI_APRegulatorEnabled()){
-		vAHI_ApConfigure(E_AHI_AP_REGULATOR_ENABLE,
-						E_AHI_AP_INT_ENABLE,
-						E_AHI_AP_SAMPLE_2,
-						E_AHI_AP_CLOCKDIV_500KHZ,
-						E_AHI_AP_INTREF);
-		while(!bAHI_APRegulatorEnabled());
+		vAHI_ApConfigure(E_AHI_AP_REGULATOR_ENABLE,	//	ｱﾅﾛｸﾞ部通電
+						E_AHI_AP_INT_ENABLE,		//	ADC完了割り込み許可
+						E_AHI_AP_SAMPLE_2,			//	ｻﾝﾌﾟﾙ周期：2clock periods
+						E_AHI_AP_CLOCKDIV_500KHZ,	//	500kHz(recommended)
+						E_AHI_AP_INTREF);			//	ﾘﾌｧﾚﾝｽ電圧(internal)
+		while(!bAHI_APRegulatorEnabled());			//	電圧安定するまで待つ
 	}
 
-	//	②ADC開始
-	vAHI_AdcEnable(
-			E_AHI_ADC_CONTINUOUS,
-            //	E_AHI_ADC_SINGLE_SHOT //１回のみ
-			//	E_AHI_ADC_CONTINUOUS,// 連続実行
-		E_AHI_AP_INPUT_RANGE_2,
-           // E_AHI_AP_INPUT_RANGE_1 (0-1.2V)
-           // または E_AHI_AP_INPUT_RANGE_2 (0-2.4V)
-		E_AHI_ADC_SRC_ADC_2
-           // E_AHI_ADC_SRC_ADC_1 (ADC1)
-           // E_AHI_ADC_SRC_ADC_2 (ADC2)
-           // E_AHI_ADC_SRC_ADC_3 (ADC3)
-           // E_AHI_ADC_SRC_ADC_4 (ADC4)
-           // E_AHI_ADC_SRC_TEMP (温度)
-           // E_AHI_ADC_SRC_VOLT (電圧)
-    );
-
-	//vAHI_AdcStartSample(); // ADC開始
+	//	②ADC設定
+	vAHI_AdcEnable(	E_AHI_ADC_SINGLE_SHOT,
+            		//	E_AHI_ADC_SINGLE_SHOT //１回のみ
+					//	E_AHI_ADC_CONTINUOUS,// 連続実行
+					E_AHI_AP_INPUT_RANGE_2,
+					// E_AHI_AP_INPUT_RANGE_1 		(0-1.2V(Vref))
+					// または E_AHI_AP_INPUT_RANGE_2 (0-2.4V(2Vref))
+					E_AHI_ADC_SRC_ADC_2);
+					// E_AHI_ADC_SRC_ADC_1 (ADC1)
+					// E_AHI_ADC_SRC_ADC_2 (ADC2)
+					// E_AHI_ADC_SRC_ADC_3 (ADC3)
+					// E_AHI_ADC_SRC_ADC_4 (ADC4)
+					// E_AHI_ADC_SRC_TEMP (温度 on-chip)
+					// E_AHI_ADC_SRC_VOLT (電圧 internal voltage monitor)
+	//	③ADC開始
+	vAHI_AdcStartSample(); // ADC開始
 }
 
 // ハードウェア初期化
@@ -139,13 +137,11 @@ static void vInitHardware()
     ToCoNet_vDebugInit(&sSerStream);
     ToCoNet_vDebugLevel(0);
 
-
 	/////////////////////////////////
     // 使用ポートの設定
     vPortAsOutput(DO3);		//	DO3:4
     vPortSetHi(DO3);
     /////////////////////////////////
-
 }
 
 // ユーザ定義のイベントハンドラ
@@ -185,6 +181,8 @@ PRIVATE void vProcessIncomingHwEvent(AppQApiHwInd_s *psAHI_Ind)
         // ADCが終了
         u16adc = u16AHI_AdcRead(); // 値の読み出し
  	    dbg("ad=%d",u16adc);
+
+ 	   vAHI_AdcStartSample();
         break;
     }
 }
