@@ -113,7 +113,7 @@ static void vInitADC() {
 	}
 
 	//	②ADC設定
-	vAHI_AdcEnable(	E_AHI_ADC_SINGLE_SHOT,
+	vAHI_AdcEnable(	E_AHI_ADC_CONTINUOUS,
             		//	E_AHI_ADC_SINGLE_SHOT //１回のみ
 					//	E_AHI_ADC_CONTINUOUS,// 連続実行
 					E_AHI_AP_INPUT_RANGE_2,
@@ -127,7 +127,7 @@ static void vInitADC() {
 					// E_AHI_ADC_SRC_TEMP (温度 on-chip)
 					// E_AHI_ADC_SRC_VOLT (電圧 internal voltage monitor)
 	//	③ADC開始
-	vAHI_AdcStartSample(); // ADC開始
+	//vAHI_AdcStartSample(); // ADC開始
 }
 
 // ハードウェア初期化
@@ -153,7 +153,7 @@ static void vProcessEvCore(tsEvent *pEv, teEvent eEvent, uint32 u32evarg)
        //dbg("%d\t%d",u32TickCount_ms,sum);      //  Tickタイマが数えてる（らしい）msと，TIMER0によるmsを出力
 
 	   uint16 u16AdcValue = u16AHI_AdcRead();
-	   dbg("%d\t%d\t%d\t%d",
+	   dbg("T1=%d\tT2=%d\tT3=%d\tADC=%d",
 			   u32TickCount_ms,
 			   sum,
 			   t1,
@@ -269,6 +269,3 @@ void cbAppWarmStart(bool_t bAfterAhiInit)
 {
     return;
 }
-
-
-
