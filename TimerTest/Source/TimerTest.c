@@ -19,7 +19,7 @@ static tsSerialPortSetup sSerPort; // シリアルポートデスクリプタ
 static tsTimerContext timer0;
 static tsTimerContext timer1;
 
-#define	DMA_ADC
+//#define	DMA_ADC
 
 // デバッグメッセージ出力用
 #define DBG
