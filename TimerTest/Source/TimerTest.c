@@ -30,8 +30,8 @@ static tsTimerContext timer1;
 #endif
 
 uint16	u16adc;
-static int sum = 0;
-static int t1=0;
+static int t0 = 0;
+static int t1 = 0;
 
 uint16	adcBuffer;
 
@@ -60,25 +60,25 @@ static void vSerialInit() {
 static void vInitTimer()
 {
 #ifndef	DMA_ADC
-	//	Timer用
+	//	Timer用(timer0)
 	memset(&timer0, 0, sizeof(tsTimerContext));
-    timer0.u8Device = E_AHI_DEVICE_TIMER0; // timer0使用
-    timer0.u16Hz = 1000;        // 1000Hz
-    timer0.u8PreScale = 1;      // プリスケーラ1/2
-    timer0.bDisableInt = FALSE; // 割り込み禁止
-    vTimerConfig(&timer0); // タイマ設定書き込み
-    vTimerStart(&timer0);  // タイマスタート
+    timer0.u8Device = E_AHI_DEVICE_TIMER0;	// timer0使用
+    timer0.u16Hz = 1000;        			// 1000Hz
+    timer0.u8PreScale = 2;      			// プリスケーラ1/2
+    timer0.bDisableInt = FALSE; 			// 割り込み禁止
+    vTimerConfig(&timer0); 					// タイマ設定書き込み
+    vTimerStart(&timer0);  					// タイマスタート
 #endif
 
-    // PWM の初期化
+    // PWM の初期化(timer1)
 	memset(&timer1, 0, sizeof(tsTimerContext));
 	vAHI_TimerFineGrainDIOControl(0x7);	// bit 0,1,2 をセット (TIMER0 の各ピンを解放する, PWM1..4 は使用する)
 	//vAHI_TimerFineGrainDIOControl(0x0); 	// bit 0,1 をセット (TIMER0 の各ピンを解放する, PWM1..4 は使用する)
 	vAHI_TimerSetLocation(E_AHI_TIMER_1, TRUE, TRUE); // IOの割り当てを設定
 	// PWM用
 	timer1.u8Device = E_AHI_DEVICE_TIMER1;	//	timer1使用
-	timer1.u16Hz = 20000;		//	1000Hz
-	timer1.u8PreScale = 1;		//	プリスケーラー
+	timer1.u16Hz = 20000;		//	1000Hz-20kHz動作確認
+	timer1.u8PreScale = 2;		//	プリスケーラー
 	//timer1.u16duty = 1024; 	//	1024=Hi, 0:Lo
 	timer1.u16duty = 512; 		//	512=Hi, 512:Lo
 	timer1.bPWMout = TRUE;		//	PWM出力
@@ -156,11 +156,11 @@ static void vProcessEvCore(tsEvent *pEv, teEvent eEvent, uint32 u32evarg)
    if(eEvent == E_EVENT_TICK_SECOND)
    {
 #ifndef	DMA_ADC
-       //dbg("%d\t%d",u32TickCount_ms,sum);      //  Tickタイマが数えてる（らしい）msと，TIMER0によるmsを出力
+       //dbg("%d\t%d",u32TickCount_ms,t0);      //  Tickタイマが数えてる（らしい）msと，TIMER0によるmsを出力
 	   uint16 u16AdcValue = u16AHI_AdcRead();
 	   dbg("T1=%d\tT2=%d\tT3=%d\tADC=%d",
 			   u32TickCount_ms,
-			   sum,
+			   t0,
 			   t1,
 			   u16AdcValue);
 #endif
@@ -230,7 +230,7 @@ void cbToCoNet_vHwEvent(uint32 u32DeviceId, uint32 u32ItemBitmap)
     case E_AHI_DEVICE_TIMER0:
     	//  TIMER0で割り込まれたら
     	//dbg("timer0");
-        sum++;
+        t0++;
         break;
     case E_AHI_DEVICE_TIMER1:
     	//  TIMER1で割り込まれたら
