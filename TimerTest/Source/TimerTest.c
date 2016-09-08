@@ -63,8 +63,8 @@ static void vInitTimer()
 	//	Timer用(timer0)
 	memset(&timer0, 0, sizeof(tsTimerContext));
     timer0.u8Device = E_AHI_DEVICE_TIMER0;	// timer0使用
-    timer0.u16Hz = 1000;        			// 1000Hz
-    timer0.u8PreScale = 2;      			// プリスケーラ1/2
+    timer0.u16Hz = 10000;        			// 1000Hz
+    timer0.u8PreScale = 1;      			// プリスケーラ1/2
     timer0.bDisableInt = FALSE; 			// 割り込み禁止
     vTimerConfig(&timer0); 					// タイマ設定書き込み
     vTimerStart(&timer0);  					// タイマスタート
@@ -77,8 +77,8 @@ static void vInitTimer()
 	vAHI_TimerSetLocation(E_AHI_TIMER_1, TRUE, TRUE); // IOの割り当てを設定
 	// PWM用
 	timer1.u8Device = E_AHI_DEVICE_TIMER1;	//	timer1使用
-	timer1.u16Hz = 20000;		//	1000Hz-20kHz動作確認
-	timer1.u8PreScale = 2;		//	プリスケーラー
+	timer1.u16Hz = 1000;		//	1000Hz-20kHz動作確認
+	timer1.u8PreScale = 1;		//	プリスケーラー
 	//timer1.u16duty = 1024; 	//	1024=Hi, 0:Lo
 	timer1.u16duty = 512; 		//	512=Hi, 512:Lo
 	timer1.bPWMout = TRUE;		//	PWM出力
@@ -235,7 +235,8 @@ void cbToCoNet_vHwEvent(uint32 u32DeviceId, uint32 u32ItemBitmap)
     case E_AHI_DEVICE_TIMER1:
     	//  TIMER1で割り込まれたら
     	timer1.u16duty = t1; 		// 512=Hi, 512:Lo
-    	vTimerStart(&timer1);
+    	vTimerChangeDuty(&timer1);
+    	//vTimerStart(&timer1);
     	t1++;
     	if(t1>1023)	t1 = 0;
     	//dbg("timer1:%04d", t1);
@@ -308,7 +309,6 @@ void adDMAInit()
 // コールドスタート時
 void cbAppColdStart(bool_t bAfterAhiInit)
 {
-
     sToCoNet_AppContext.u8CPUClk = 3;       //  CPUクロックは最高の32MHz(0:4MHz,1:8MHz,2:16MHz,3:32MHz)
     sToCoNet_AppContext.u16TickHz = 250;    //  TickTimerはデフォルトの250Hz
     //sToCoNet_AppContext.u16TickHz = 1000; //	システムTICK割り込みを1kHz
